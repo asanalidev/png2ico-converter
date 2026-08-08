@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNG в ICO Конвертер</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #cbd5e1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: var(--text-color);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary-color);
+            background: #f0fdf4;
+        }
+
+        .drop-zone p {
+            margin: 0;
+            color: #64748b;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .preview-container img {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 5px;
+            background: #fff;
+        }
+
+        .options {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .options h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            margin-top: 25px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>PNG в ICO Конвертер</h1>
+        
+        <div class="drop-zone" id="drop-zone">
+            <p>Перетащите PNG файл сюда или <strong>нажмите для выбора</strong></p>
+            <input type="file" id="file-input" accept="image/png, image/jpeg">
+        </div>
+
+        <div class="preview-container" id="preview-container">
+            <img id="preview-img" src="" alt="Предпросмотр">
+            <p id="file-name" style="font-size: 14px; margin-top: 8px; color: #64748b;"></p>
+        </div>
+
+        <div class="options" id="options-section">
+            <h3>Выберите размеры для ICO:</h3>
+            <div class="checkbox-group">
+                <label class="checkbox-label"><input type="checkbox" value="16" checked> 16x16</label>
+                <label class="checkbox-label"><input type="checkbox" value="24" checked> 24x24</label>
+                <label class="checkbox-label"><input type="checkbox" value="32" checked> 32x32</label>
+                <label class="checkbox-label"><input type="checkbox" value="48" checked> 48x48</label>
+                <label class="checkbox-label"><input type="checkbox" value="64" checked> 64x64</label>
+                <label class="checkbox-label"><input type="checkbox" value="256" checked> 256x256</label>
+            </div>
+
+            <button class="btn" id="convert-btn">Сконвертировать и скачать</button>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImg = document.getElementById('preview-img');
+        const fileNameEl = document.getElementById('file-name');
+        const optionsSection = document.getElementById('options-section');
+        const convertBtn = document.getElementById('convert-btn');
+
+        let selectedFile = null;
+
+        // Обработка клика по зоне загрузки
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Drag and Drop события
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Пожалуйста, выберите файл изображения!');
+                return;
+            }
+
+            selectedFile = file;
+            fileNameEl.textContent = file.name;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewContainer.style.display = 'block';
+                optionsSection.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Функция конвертации в ICO формат
+        convertBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const checkboxes = document.querySelectorAll('.checkbox-group input[type="checkbox"]:checked');
+            const sizes = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (sizes.length === 0) {
+                alert('Выберите хотя бы один размер!');
+                return;
+            }
+
+            convertBtn.disabled = true;
+            convertBtn.textContent = 'Конвертация...';
+
+            try {
+                const icoBlob = await generateIco(selectedFile, sizes);
+                
+                // Создание ссылки для скачивания
+                const url = URL.createObjectURL(icoBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'favicon.ico';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error(error);
+                alert('Произошла ошибка при конвертации.');
+            } finally {
+                convertBtn.disabled = false;
+                convertBtn.textContent = 'Сконвертировать и скачать';
+            }
+        });
+
+        async function generateIco(file, sizes) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = async () => {
+                    try {
+                        const pngImages = [];
+
+                        // Создаем PNG для каждого выбранного размера
+                        for (const size of sizes) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = size;
+                            canvas.height = size;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, size, size);
+
+                            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+                            const buffer = await blob.arrayBuffer();
+                            pngImages.push({ size, buffer: new Uint8Array(buffer) });
+                        }
+
+                        // Собираем ICO файл
+                        // Заголовок ICO (6 байт)
+                        const headerLength = 6;
+                        // Каталог иконок: по 16 байт на каждую картинку
+                        const directoryLength = 16 * pngImages.length;
+                        let offset = headerLength + directoryLength;
+
+                        const header = new ArrayBuffer(headerLength);
+                        const headerView = new DataView(header);
+                        headerView.setUint16(0, 0, true); // Резерв (всегда 0)
+                        headerView.setUint16(2, 1, true); // Тип файла (1 для ICO)
+                        headerView.setUint16(4, pngImages.length, true); // Количество картинок
+
+                        const directoryEntries = [];
+                        const dataBuffers = [];
+
+                        for (const item of pngImages) {
+                            const entry = new ArrayBuffer(16);
+                            const view = new DataView(entry);
+
+                            const width = item.size >= 256 ? 0 : item.size;
+                            const height = item.size >= 256 ? 0 : item.size;
+
+                            view.setUint8(0, width);  // Ширина
+                            view.setUint8(1, height); // Высота
+                            view.setUint8(2, 0);      // Палитра (0 так как PNG)
+                            view.setUint8(3, 0);      // Резерв
+                            view.setUint16(4, 1, true);   // Цветовые плоскости
+                            view.setUint16(6, 32, true);  // Бит на пиксель
+                            view.setUint32(8, item.buffer.length, true); // Размер данных PNG
+                            view.setUint32(12, offset, true); // Смещение данных от начала файла
+
+                            directoryEntries.push(entry);
+                            dataBuffers.push(item.buffer);
+
+                            offset += item.buffer.length;
+                        }
+
+                        // Объединяем все части в один Blob
+                        const totalLength = offset;
+                        const finalBuffer = new Uint8Array(totalLength);
+                        
+                        let position = 0;
+                        finalBuffer.set(new Uint8Array(header), position);
+                        position += header.byteLength;
+
+                        for (const entry of directoryEntries) {
+                            finalBuffer.set(new Uint8Array(entry), position);
+                            position += entry.byteLength;
+                        }
+
+                        for (const buffer of dataBuffers) {
+                            finalBuffer.set(buffer, position);
+                            position += buffer.length;
+                        }
+
+                        resolve(new Blob([finalBuffer], { type: 'image/x-icon' }));
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                img.onerror = reject;
+                img.src = URL.createObjectURL(file);
+            });
+        }
+    </script>
+</body>
+</html>
